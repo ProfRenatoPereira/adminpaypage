@@ -3,7 +3,7 @@ import sqlite3
 import os
 
 app = Flask(__name__)
-DB_FILE = 'folha_v4_estavel.db' # Novo banco para mapear os novos cargos sem conflito
+DB_FILE = 'folha_v4_estavel.db'
 
 def iniciar_banco():
     conexao = sqlite3.connect(DB_FILE)
@@ -39,7 +39,6 @@ def calcular_irrf(salario_contribuicao, desconto_inss):
 @app.route('/')
 def index():
     return render_template('index.html')
-
 @app.route('/api/funcionarios', methods=['GET'])
 def listar_funcionarios():
     conexao = sqlite3.connect(DB_FILE)
@@ -58,7 +57,6 @@ def demitir_funcionario(id_func):
     conexao.commit()
     conexao.close()
     return jsonify({'status': 'removido'})
-
 @app.route('/api/calcular', methods=['POST'])
 def calcular_e_salvar():
     dados = request.json
@@ -114,6 +112,34 @@ def calcular_e_salvar():
     conexao.commit()
     conexao.close()
     return jsonify({'status': 'sucesso'})
+
+@app.route('/api/rescisao', methods=['POST'])
+def calcular_rescisao():
+    try:
+        dados = request.json or {}
+        salario_base = float(dados.get('salario', 0))
+        tipo_rescisao = dados.get('tipoRescisao', 'demissao_sem_justa')
+        
+        saldo_salario = salario_base * 0.5
+        decimo_terceiro = (salario_base / 12) * 6
+        ferias_prop = (salario_base / 12) * 6
+        terco = ferias_prop / 3
+        
+        valor_aviso = salario_base if tipo_rescisao == 'demissao_sem_justa' else 0
+        desconto_aviso = salario_base if tipo_rescisao == 'pedido_demissao' else 0
+        
+        total_prov = saldo_salario + decimo_terceiro + ferias_prop + terco + valor_aviso
+        total_desc = calcular_inss(saldo_salario + decimo_terceiro) + desconto_aviso
+        
+        return jsonify({
+            'saldoSalario': saldo_salario, 'decimoTerceiroProp': decimo_terceiro, 
+            'feriasProporcionais': ferias_prop, 'tercoConstitucional': terco, 
+            'valorAvisoPrevio': valor_aviso, 'descontoAviso': desconto_aviso,
+            'totalProventos': total_prov, 'inss': total_desc - desconto_aviso, 
+            'liquido': total_prov - total_desc, 'tipo': tipo_rescisao
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 iniciar_banco()
 if __name__ == '__main__':
