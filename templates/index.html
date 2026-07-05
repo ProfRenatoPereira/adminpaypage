@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Fiscal - TERCEIRO ADM ASSOCIADOS</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .bi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .chart-box { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .chart-box h4 { color: #1e3a8a; margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .pizza-wrapper { display: flex; align-items: center; justify-content: center; height: 160px; }
+        .pizza-native { width: 140px; height: 140px; border-radius: 50%; background: conic-gradient(#16a34a 0% 100%); transition: background 0.3s; }
+        .bar-container { display: flex; align-items: flex-end; justify-content: space-around; height: 150px; border-bottom: 2px solid #94a3b8; padding-top: 10px; gap: 5px; }
+        .bar-wrapper { display: flex; flex-direction: column; align-items: center; flex-grow: 1; }
+        .bar-native { width: 100%; max-width: 45px; background: #1e3a8a; border-radius: 4px 4px 0 0; transition: height 0.5s; text-align: center; color: white; font-size: 0.75rem; font-weight: bold; display: flex; align-items: flex-start; justify-content: center; padding-top: 5px; height: 0%; }
+        .bar-label { font-size: 0.7rem; text-align: center; margin-top: 0.5rem; color: #475569; font-weight: 600; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .linear-wrapper { display: flex; flex-direction: column; gap: 0.6rem; justify-content: center; min-height: 150px; }
+        .linear-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+        .linear-name { width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #334155; }
+        .linear-bar-bg { background: #e2e8f0; border-radius: 4px; flex-grow: 1; height: 14px; overflow: hidden; position: relative; }
+        .linear-bar-fill { background: #0284c7; height: 100%; width: 0%; transition: width 0.5s; }
+        .linear-value { width: 75px; text-align: right; font-weight: bold; color: #0284c7; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <h1>TERCEIRO ADM ASSOCIADOS</h1>
+            <p>Gerenciador Operacional de Pessoal | Auditoria Interna de Custos</p>
+        </div>
+        <div class="actions-header" style="display: flex; gap: 0.5rem;">
+            <button class="btn-print" id="btn_imprimir_balanco">🖨️ Imprimir Balanço Geral</button>
+            <button class="btn-print" style="background:#0284c7" id="btn_folha_13">🎄 Folha 13º Integral</button>
+        </div>
+    </header>
+
+    <div class="grid-config">
+        <!-- Caixa -->
+        <div class="card">
+            <h3>Gestão de Caixa</h3>
+            <div class="form-group">
+                <label>Mês de Referência</label>
+                <select id="mes_referencia">
+                    <option value="Julho" selected>Julho</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Receita Mensal (R$)</label><input type="number" id="receita_empresa" value="150000"></div>
+            <div class="form-group"><label>Limite Total de Pessoal</label><input type="number" id="limite_func" value="10"></div>
+        </div>
+
+        <!-- Proventos com Lista de Cargos Estendida -->
+        <div class="card">
+            <h3>Cadastro & Proventos</h3>
+            <div class="form-group"><label>Nome Completo</label><input type="text" id="nome" placeholder="Ex: Renato Silva"></div>
+            <div class="form-group"><label>Data de Admissão (CLT)</label><input type="date" id="data_admissao" value="2025-01-15"></div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <select id="cargo">
+                        <option value="Diretoria">Diretoria</option>
+                        <option value="Gerência">Gerência</option>
+                        <option value="Analista">Analista</option>
+                        <option value="Técnico">Técnico</option>
+                        <option value="Engenharia">Engenharia</option>
+                        <option value="Vendas">Vendas</option>
+                        <option value="Manutenção">Manutenção</option>
+                        <option value="Operacional" selected>Operacional</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Salário Base (R$)</label><input type="number" id="salario" value="4000"></div>
+            </div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group"><label>Horas Contratuais</label><input type="number" id="horas_comp" value="220"></div>
+                <div class="form-group"><label>Insalubridade (R$)</label><input type="number" id="insalubridade" value="500"></div>
+            </div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr 1fr; gap: 0.3rem; margin-bottom: 0;">
+                <div class="form-group"><label>HE 25% (h)</label><input type="number" id="he_semana" value="40"></div>
+                <div class="form-group"><label>HE 50% (h)</label><input type="number" id="he_sabado" value="52"></div>
+                <div class="form-group"><label>HE 100% (h)</label><input type="number" id="he_domingo" value="52"></div>
+            </div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group"><label>Benefícios Puros (R$)</label><input type="number" id="beneficios" value="500"></div>
+                <div class="form-group"><label>Filhos - 14 anos</label><input type="number" id="qtd_filhos" value="0"></div>
+            </div>
+            <div class="form-group"><label>Observações do Holerite (Texto Livre)</label><input type="text" id="observacoes" value="Ex: Pagamento bônus ou avisos."></div>
+        </div>
+
+        <!-- Retenções -->
+        <div class="card">
+            <h3>Retenções & Assistência</h3>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group"><label>Plano de Saúde (R$)</label><input type="number" id="plano_saude" value="150"></div>
+                <div class="form-group"><label>Plano Odonto (R$)</label><input type="number" id="plano_odonto" value="100"></div>
+            </div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group"><label>Vale Farmácia (R$)</label><input type="number" id="vale_farmacia" value="0"></div>
+                <div class="form-group"><label>Sindicato (R$)</label><input type="number" id="sindicato" value="0"></div>
+            </div>
+            <div class="grid-config" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0;">
+                <div class="form-group">
+                    <label>Adiantamento (40%)</label>
+                    <select id="adiantamento"><option value="sim">Sim</option><option value="nao" selected>Não</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Descontar VT? (6%)</label>
+                    <select id="vt_desconto"><option value="sim" selected>Sim</option><option value="nao">Não</option></select>
+                </div>
+            </div>
+            <button class="btn-add" id="btn_adicionar">Adicionar Colaborador</button>
+        </div>
+    </div>
+
+    <!-- Dashboards -->
+    <div class="dashboard">
+        <div class="metric"><p>Funcionários Ativos</p><h2 id="dash_total_func">0 / 10</h2></div>
+        <div class="metric"><p>Custo Bruto Total</p><h2 id="dash_custo_bruto">R$ 0,00</h2></div>
+        <div class="metric"><p>Impostos Retidos</p><h2 id="dash_total_descontos" style="color: #dc2626">R$ 0,00</h2></div>
+        <div class="metric"><p>Líquido Bancário</p><h2 id="dash_folha_liquida" style="color: #16a34a">R$ 0,00</h2></div>
+        <div class="metric" id="card_balanco"><p>Margem Disponível</p><h2 id="dash_saldo_empresa">R$ 0,00</h2></div>
+    </div>
+
+    <!-- Painéis Analíticos Visuais CSS -->
+    <div class="bi-container">
+        <div class="chart-box"><h4>📊 Divisão Macroeconômica (Pizza)</h4><div class="pizza-wrapper"><div id="nativePizza" class="pizza-native"></div></div></div>
+        <div class="chart-box"><h4>📊 Análise de Pareto por Cargo</h4><div id="nativePareto" class="bar-container"></div></div>
+        <div class="chart-box"><h4>📊 Elasticidade de Custo Individual</h4><div id="nativeLinear" class="linear-wrapper"></div></div>
+    </div>
+
+    <div class="section-title">
+        <h2>Quadro Corporativo Corrente</h2>
+        <button class="btn-print" style="background:#0284c7" id="btn_imprimir_listagem">🖨️ Imprimir Listagem</button>
+    </div>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome / Admissão</th><th>Cargo</th><th>Salário Base</th><th>Líquido Final</th><th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela_corpo"></tbody>
+        </table>
+    </div>
+</div>
+<div id="print-area"></div>
+<script src="/static/script.js"></script>
+</body>
+</html>
