@@ -120,13 +120,13 @@ function renderizarGraficosNativos(liquido, descontos) {
 
 function renderizarTabela() {
     const corpo = document.getElementById('tabela_corpo');
+    if (!corpo) return;
     corpo.innerHTML = '';
+    
     funcionarios.forEach(f => {
-        // Codifica os dados de forma limpa e isolada
         const dados = encodeURIComponent(JSON.stringify(f));
         const tr = document.createElement('tr');
         
-        // Passamos estritamente a string de dados codificada para as funcoes tratarem internamente
         tr.innerHTML = `
             <td><strong>${f.nome}</strong></td>
             <td>${f.cargo}</td>
@@ -135,11 +135,8 @@ function renderizarTabela() {
             <td class="actions-cell">
                 <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
                 <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
-                
-                <!-- CHAMADAS CORRIGIDAS: Passam a string direta sem misturar parênteses ou aspas no HTML -->
                 <button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'demissao_sem_justa')">⚠️ Sem Justa</button>
                 <button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'pedido_demissao')">🏃 Pedido</button>
-                
                 <button class="btn-delete" onclick="demitirFuncionario(${f.id})">Demitir</button>
             </td>
         `;
@@ -147,7 +144,6 @@ function renderizarTabela() {
     });
 }
 
-// NOVA FUNÇÃO AUXILIAR: Executa a decodificacao de forma segura isolada do HTML inline
 function prepararRescisaoDirecta(dadosString, tipo) {
     const objetoFuncionario = JSON.parse(decodeURIComponent(dadosString));
     emitirRescisaoExecutiva(objetoFuncionario, tipo);
@@ -167,21 +163,23 @@ async function emitirRescisaoExecutiva(f, tipo) {
             <div style="border:2px solid #000; padding:20px; max-width:650px; margin:0 auto;">
                 <h2 style="text-align:center; color:#dc2626;">TERMO DE QUITAÇÃO DE RESCISÃO TRABALHISTA</h2>
                 <p style="text-align:center; font-weight:bold;">TERCEIRO ADM ASSOCIADOS</p>
-                <p style="text-align:center;">Causa: <strong>${tipo === 'pedido_demissao' ? 'Pedido de Demissão pelo Empregado' : 'Dispensa sem Justa Causa pelo Empregador'}</strong></p><hr>
+                <p style="text-align:center;">Causa: <strong>\${tipo === 'pedido_demissao' ? 'Pedido de Demissão' : 'Dispensa sem Justa Causa'}</strong></p><hr>
                 <h4>VERBAS PROPORCIONAIS</h4>
-                <p>(+) Saldo de Salário Proporcional: ${formatarMoeda(r.saldoSalario)}</p>
-                ${r.valorAvisoPrevio > 0 ? `<p>(+) Aviso Prévio Indenizado Recebido: ${formatarMoeda(r.valorAvisoPrevio)}</p>` : ''}
-                <p>(+) 13º Proporcional Natalino: ${formatarMoeda(r.decimoTerceiroProp)}</p>
-                <p>(+) Férias Proporcionais + 1/3: ${formatarMoeda(r.feriasProporcionais + r.tercoConstitucional)}</p>
+                <p>(+) Saldo de Salário: \${formatarMoeda(r.saldoSalario)}</p>
+                \${r.valorAvisoPrevio > 0 ? `<p>(+) Aviso Prévio Recebido: \${formatarMoeda(r.valorAvisoPrevio)}</p>` : ''}
+                <p>(+) 13º Proporcional: \${formatarMoeda(r.decimoTerceiroProp)}</p>
+                <p>(+) Férias + 1/3: \${formatarMoeda(r.feriasProporcionais + r.tercoConstitucional)}</p>
                 <h4>DEDUÇÕES LEGAIS</h4>
-                <p style="color:red">(-) INSS Retido s/ Rescisão: ${formatarMoeda(r.inss)}</p>
-                ${r.descontoAviso > 0 ? `<p style="color:red">(-) Desconto de Aviso Prévio (Não Cumprido): ${formatarMoeda(r.descontoAviso)}</p>` : ''}
+                <p style="color:red">(-) INSS Retido: \${formatarMoeda(r.inss)}</p>
+                \${r.descontoAviso > 0 ? `<p style="color:red">(-) Desconto de Aviso Prévio: \${formatarMoeda(r.descontoAviso)}</p>` : ''}
                 <hr>
-                <h3>SALDO LÍQUIDO DA QUITAÇÃO: ${formatarMoeda(r.liquido)}</h3>
-                <br><br><p style="text-align:center;">___________________________<br>Assinatura do Ex-Colaborador</p>
+                <h3>SALDO LÍQUIDO DA QUITAÇÃO: \${formatarMoeda(r.liquido)}</h3>
+                <br><br><p style="text-align:center;">___________________________<br>Assinatura</p>
             </div>
             <script>window.print();<\/script>
         </body></html>
     `);
     janela.document.close();
 }
+
+function imprimirBalanco() { window.print(); }
