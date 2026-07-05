@@ -122,6 +122,7 @@ function renderizarTabela() {
     const corpo = document.getElementById('tabela_corpo');
     corpo.innerHTML = '';
     funcionarios.forEach(f => {
+        const dados = encodeURIComponent(JSON.stringify(f));
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${f.nome}</strong></td>
@@ -129,9 +130,9 @@ function renderizarTabela() {
             <td>${formatarMoeda(f.salario)}</td>
             <td style="color:#16a34a"><strong>${formatarMoeda(f.liquido)}</strong></td>
             <td class="actions-cell">
-                <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="alert('Recibo de Vencimento Mensal enviado para a impressora!')">📄 Mensal</button>
-                <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="alert('Aviso e Recibo de Gozo de Férias gerado!')">🌴 Férias</button>
-                <button class="btn-delete" style="background:#eab308; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="alert('Cálculo Prévio de Rescisão concluído!')">⚠️ Rescisão</button>
+                <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
+                <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
+                <button class="btn-delete" style="background:#eab308; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="selecionarTipoRescisao('${dados}')">⚠️ Rescisão</button>
                 <button class="btn-delete" onclick="demitirFuncionario(${f.id})">Demitir</button>
             </td>
         `;
@@ -139,36 +140,106 @@ function renderizarTabela() {
     });
 }
 
-function imprimirBalanco() { window.print(); }
-
-function abrirDecimoTerceiroGeral() {
-    if (funcionarios.length === 0) { alert("Nenhum funcionário ativo na base SQLite para calcular a gratificação natalina."); return; }
-    let totalBruto = 0, totalInss = 0, totalLiquido = 0;
-    let htmlLinhas = '';
-    
-    funcionarios.forEach(f => {
-        const inss = f.salario * 0.09; // Alíquota didática direta do 13º
-        const liq = f.salario - inss;
-        totalBruto += f.salario; totalInss += inss; totalLiquido += liq;
-        htmlLinhas += `<p style='margin: 8px 0;'><strong>${f.nome}</strong> (${f.cargo}): Salário: ${formatarMoeda(f.salario)} | INSS s/ 13º: -${formatarMoeda(inss)} | Líquido: <span style='color:green; font-weight:bold;'>${formatarMoeda(liq)}</span></p>`;
-    });
-
-    const janela = window.open('', '_blank', 'width=750,height=700');
+function abrirContracheque(dadosString) {
+    const f = JSON.parse(decodeURIComponent(dadosString));
+    const proventosTotais = f.salario + f.total_he_ganho + f.insalubridade + f.reflexo_13_ferias;
+    const janela = window.open('', '_blank', 'width=750,height=850');
     janela.document.write(`
-        <html><body style="font-family:monospace; padding:30px; color:#000; background:#fff;">
-            <div style="border:2px solid #000; padding:25px; max-width:650px; margin:0 auto;">
-                <h2 style="text-align:center; color:#1e3a8a; margin-bottom:5px;">TERCEIRO ADM ASSOCIADOS</h2>
-                <h3 style="text-align:center; color:#16a34a; margin-top:0;">FOLHA DE PAGAMENTO - 13º SALÁRIO INTEGRAL</h3>
+        <html><body style="font-family:monospace; padding:25px; color:#000;">
+            <div style="border:2px solid #000; padding:20px; max-width:650px; margin:0 auto;">
+                <h2 style="text-align:center; margin-bottom:5px;">RECIBO DE PAGAMENTO MENSAL</h2>
+                <p style="text-align:center; font-weight:bold;">TERCEIRO ADM ASSOCIADOS</p>
                 <hr style="border:1px dashed #000; margin:15px 0;">
-                ${htmlLinhas}
-                <hr style="border:1px dashed #000; margin:20px 0;">
-                <h4 style="color:#1e3a8a; margin-bottom:5px;">DEMONSTRATIVO DE PROVISÃO E DESEMBOLSO (DEZEMBRO)</h4>
-                <p><strong>Custo de Gratificação Bruta:</strong> ${formatarMoeda(totalBruto)}</p>
-                <p><strong>Retenções Previdenciárias Totais:</strong> ${formatarMoeda(totalInss)}</p>
-                <h3 style="background:#f1f5f9; padding:10px; border:1px solid #000; display:inline-block; margin-top:10px;">TOTAL LÍQUIDO A PAGAR (DESEMBOLSO REAL): ${formatarMoeda(totalLiquido)}</h3>
-                <br><br><br><button onclick="window.print()" style="padding:7px 15px; font-weight:bold; cursor:pointer;">🖨️ Imprimir Relação Natalina</button>
+                <p><strong>Colaborador:</strong> ${f.nome} | <strong>Cargo:</strong> ${f.cargo}</p>
+                <p><strong>Mês de Referência:</strong> ${f.mes_ref || 'Julho'}</p>
+                <hr style="border:1px dashed #000; margin:15px 0;">
+                <h4 style="color:#1e3a8a;">PROVENTOS (CRÉDITOS)</h4>
+                <p>(+) Salário Base: ${formatarMoeda(f.salario)}</p>
+                ${f.total_he_ganho > 0 ? `<p>(+) Horas Extras Acumuladas: ${formatarMoeda(f.total_he_ganho)}</p>` : ''}
+                ${f.insalubridade > 0 ? `<p>(+) Adicional Insalubridade: ${formatarMoeda(f.insalubridade)}</p>` : ''}
+                <p>(+) Auxílios/Benefícios: ${formatarMoeda(f.beneficios)}</p>
+                <p style="font-weight:bold; text-align:right;">TOTAL PROVENTOS: ${formatarMoeda(proventosTotais + f.beneficios)}</p>
+                <h4 style="color:#dc2626;">DESCONTOS (RETENÇÕES)</h4>
+                <p>(-) INSS Progressivo: ${formatarMoeda(f.inss)}</p>
+                <p>(-) Imposto de Renda (IRRF): ${formatarMoeda(f.irrf)}</p>
+                ${f.vt > 0 ? `<p>(-) Vale Transporte (6%): ${formatarMoeda(f.vt)}</p>` : ''}
+                <p style="font-weight:bold; text-align:right;">TOTAL DESCONTOS: ${formatarMoeda(f.total_descontos)}</p>
+                <hr style="border:1px dashed #000; margin:20px 0 10px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border:1px solid #000;">
+                    <h3>VALOR LÍQUIDO A RECEBER:</h3>
+                    <h3 style="color:#16a34a;">${formatarMoeda(f.liquido)}</h3>
+                </div>
+                <br><br><p style="text-align:center;">___________________________<br>Assinatura do Colaborador</p>
             </div>
+            <script>window.print();<\/script>
         </body></html>
     `);
     janela.document.close();
 }
+
+function abrirFerias(dadosString) {
+    const f = JSON.parse(decodeURIComponent(dadosString));
+    const baseFerias = f.salario + f.insalubridade;
+    const terco = baseFerias / 3;
+    const proventos = baseFerias + terco;
+    const inssFerias = proventos * 0.09; 
+    const janela = window.open('', '_blank', 'width=750,height=700');
+    janela.document.write(`
+        <html><body style="font-family:monospace; padding:30px;">
+            <div style="border:2px solid #000; padding:20px; max-width:600px; margin:0 auto;">
+                <h2 style="text-align:center;">RECIBO DE AVISO E GOZO DE FÉRIAS</h2>
+                <p style="text-align:center; font-weight:bold;">TERCEIRO ADM ASSOCIADOS</p><hr>
+                <p><strong>Colaborador:</strong> ${f.nome} | <strong>Cargo:</strong> ${f.cargo}</p><br>
+                <h4>PROVENTOS</h4>
+                <p>(+) Valor de Férias Base: ${formatarMoeda(baseFerias)}</p>
+                <p>(+) 1/3 Constitucional: ${formatarMoeda(terco)}</p>
+                <h4>DESCONTOS</h4>
+                <p style="color:red">(-) INSS Retido s/ Férias: ${formatarMoeda(inssFerias)}</p><hr>
+                <h3>VALOR LÍQUIDO DAS FÉRIAS: ${formatarMoeda(proventos - inssFerias)}</h3>
+                <br><br><p style="text-align:center;">___________________________<br>Assinatura do Profissional</p>
+            </div>
+            <script>window.print();<\/script>
+        </body></html>
+    `);
+    janela.document.close();
+}
+
+function selecionarTipoRescisao(dadosString) {
+    const f = JSON.parse(decodeURIComponent(dadosString));
+    const tipo = confirm("Clique em [OK] para calcular Dispensa Sem Justa Causa.\nClique em [CANCELAR] para simular Pedido de Demissão.");
+    emitirRescisaoExecutiva(f, tipo ? 'demissao_sem_justa' : 'pedido_demissao');
+}
+async function emitirRescisaoExecutiva(f, tipo) {
+    const resposta = await fetch('/api/rescisao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salario: f.salario, admissao: f.data_admissao, tipoRescisao: tipo })
+    });
+    const r = await resposta.json();
+    const janela = window.open('', '_blank', 'width=750,height=850');
+    janela.document.write(`
+        <html><body style="font-family:monospace; padding:30px; color:#000;">
+            <div style="border:2px solid #000; padding:20px; max-width:650px; margin:0 auto;">
+                <h2 style="text-align:center; color:#dc2626;">TERMO DE QUITAÇÃO DE RESCISÃO TRABALHISTA</h2>
+                <p style="text-align:center; font-weight:bold;">TERCEIRO ADM ASSOCIADOS</p>
+                <p style="text-align:center;">Causa: <strong>${tipo === 'pedido_demissao' ? 'Pedido de Demissão' : 'Dispensa sem Justa Causa'}</strong></p><hr>
+                <h4>VERBAS PROPORCIONAIS</h4>
+                <p>(+) Saldo de Salário Proporcional: ${formatarMoeda(r.saldoSalario)}</p>
+                ${r.valorAvisoPrevio > 0 ? `<p>(+) Aviso Prévio Recebido: ${formatarMoeda(r.valorAvisoPrevio)}</p>` : ''}
+                <p>(+) 13º Proporcional Natalino: ${formatarMoeda(r.decimoTerceiroProp)}</p>
+                <p>(+) Férias Proporcionais + 1/3: ${formatarMoeda(r.feriasProporcionais + r.tercoConstitucional)}</p>
+                <h4>DEDUÇÕES LEGAIS</h4>
+                <p style="color:red">(-) INSS Retido s/ Rescisão: ${formatarMoeda(r.inss)}</p>
+                ${r.descontoAviso > 0 ? `<p style="color:red">(-) Desconto de Aviso Prévio não Cumprido: ${formatarMoeda(r.descontoAviso)}</p>` : ''}
+                <hr>
+                <h3>SALDO LÍQUIDO DA QUITAÇÃO: ${formatarMoeda(r.liquido)}</h3>
+                <br><br><p style="text-align:center;">___________________________<br>Assinatura do Ex-Colaborador</p>
+            </div>
+            <script>window.print();<\/script>
+        </body></html>
+    `);
+    janela.document.close();
+}
+
+function imprimirBalanco() { window.print(); }
+
