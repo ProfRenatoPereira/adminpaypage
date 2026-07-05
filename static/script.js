@@ -123,8 +123,11 @@ function renderizarTabela() {
     const corpo = document.getElementById('tabela_corpo');
     corpo.innerHTML = '';
     funcionarios.forEach(f => {
+        // Codifica os dados de forma limpa e isolada
         const dados = encodeURIComponent(JSON.stringify(f));
         const tr = document.createElement('tr');
+        
+        // Passamos estritamente a string de dados codificada para as funcoes tratarem internamente
         tr.innerHTML = `
             <td><strong>${f.nome}</strong></td>
             <td>${f.cargo}</td>
@@ -134,9 +137,9 @@ function renderizarTabela() {
                 <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
                 <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
                 
-                <!-- DOIS BOTÕES EXECUTIVOS: ADEUS CAIXA DE DIÁLOGO DO NAVEGADOR -->
-                <button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(JSON.parse(decodeURIComponent('${dados}')), 'demissao_sem_justa')">⚠️ Sem Justa</button>
-                <button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(JSON.parse(decodeURIComponent('${dados}')), 'pedido_demissao')">🏃 Pedido</button>
+                <!-- CHAMADAS CORRIGIDAS: Passam a string direta sem misturar parênteses ou aspas no HTML -->
+                <button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'demissao_sem_justa')">⚠️ Sem Justa</button>
+                <button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'pedido_demissao')">🏃 Pedido</button>
                 
                 <button class="btn-delete" onclick="demitirFuncionario(${f.id})">Demitir</button>
             </td>
@@ -144,6 +147,13 @@ function renderizarTabela() {
         corpo.appendChild(tr);
     });
 }
+
+// NOVA FUNÇÃO AUXILIAR: Executa a decodificacao de forma segura isolada do HTML inline
+function prepararRescisaoDirecta(dadosString, tipo) {
+    const objetoFuncionario = JSON.parse(decodeURIComponent(dadosString));
+    emitirRescisaoExecutiva(objetoFuncionario, tipo);
+}
+
 async function emitirRescisaoExecutiva(f, tipo) {
     const resposta = await fetch('/api/rescisao', {
         method: 'POST',
