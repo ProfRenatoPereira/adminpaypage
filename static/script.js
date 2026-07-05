@@ -123,7 +123,6 @@ function renderizarTabela() {
     const corpo = document.getElementById('tabela_corpo');
     corpo.innerHTML = '';
     funcionarios.forEach(f => {
-        // Escapa os dados do colaborador para evitar quebra de strings na chamada dos botoes
         const dados = encodeURIComponent(JSON.stringify(f));
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -132,22 +131,19 @@ function renderizarTabela() {
             <td>${formatarMoeda(f.salario)}</td>
             <td style="color:#16a34a"><strong>${formatarMoeda(f.liquido)}</strong></td>
             <td class="actions-cell">
-                <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
-                <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
-                <button class="btn-delete" style="background:#eab308; color:white; border:none; padding:4px 8px; margin-right:5px; border-radius:4px;" onclick="selecionarTipoRescisao('${dados}')">⚠️ Rescisão</button>
+                <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
+                <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
+                
+                <!-- DOIS BOTÕES EXECUTIVOS: ADEUS CAIXA DE DIÁLOGO DO NAVEGADOR -->
+                <button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(JSON.parse(decodeURIComponent('${dados}')), 'demissao_sem_justa')">⚠️ Sem Justa</button>
+                <button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(JSON.parse(decodeURIComponent('${dados}')), 'pedido_demissao')">🏃 Pedido</button>
+                
                 <button class="btn-delete" onclick="demitirFuncionario(${f.id})">Demitir</button>
             </td>
         `;
         corpo.appendChild(tr);
     });
 }
-function selecionarTipoRescisao(dadosString) {
-    const f = JSON.parse(decodeURIComponent(dadosString));
-    // Captura o clique da caixa mostrada na imagem e define a rota do cálculo
-    const tipo = confirm("Clique em [OK] para calcular Dispensa Sem Justa Causa.\nClique em [CANCELAR] para simular Pedido de Demissão.");
-    emitirRescisaoExecutiva(f, tipo ? 'demissao_sem_justa' : 'pedido_demissao');
-}
-
 async function emitirRescisaoExecutiva(f, tipo) {
     const resposta = await fetch('/api/rescisao', {
         method: 'POST',
@@ -180,53 +176,3 @@ async function emitirRescisaoExecutiva(f, tipo) {
     `);
     janela.document.close();
 }
-function abrirDecimoTerceiroGeral() {
-    if (funcionarios.length === 0) { alert("Nenhum funcionário ativo para calcular o 13º."); return; }
-    let totalBruto = 0, totalInss = 0, totalLiquido = 0;
-    let htmlLinhas = '';
-    
-    funcionarios.forEach(f => {
-        const inss = f.salario * 0.09; 
-        const liq = f.salario - inss;
-        totalBruto += f.salario; totalInss += inss; totalLiquido += liq;
-        htmlLinhas += `<p style='margin: 8px 0;'><strong>${f.nome}</strong> (${f.cargo}): Salário: ${formatarMoeda(f.salario)} | INSS s/ 13º: -${formatarMoeda(inss)} | Líquido: <span style='color:green; font-weight:bold;'>${formatarMoeda(liq)}</span></p>`;
-    });
-
-    const window13 = window.open('', '_blank', 'width=750,height=700');
-    window13.document.write(`
-        <html><body style="font-family:monospace; padding:30px; color:#000;">
-            <div style="border:2px solid #000; padding:25px; max-width:650px; margin:0 auto;">
-                <h2 style="text-align:center; color:#1e3a8a; margin-bottom:5px;">TERCEIRO ADM ASSOCIADOS</h2>
-                <h3 style="text-align:center; color:#16a34a; margin-top:0;">FOLHA DE PAGAMENTO - 13º SALÁRIO INTEGRAL</h3>
-                <hr style="border:1px dashed #000; margin:15px 0;">
-                ${htmlLinhas}
-                <hr style="border:1px dashed #000; margin:20px 0;">
-                <h4>DEMONSTRATIVO DE PROVISÃO ANUAL (DEZEMBRO)</h4>
-                <p><strong>Custo de Gratificação Bruta:</strong> ${formatarMoeda(totalBruto)}</p>
-                <p><strong>Retenções Previdenciárias Totais:</strong> ${formatarMoeda(totalInss)}</p>
-                <h3 style="background:#f1f5f9; padding:10px; border:1px solid #000; display:inline-block; margin-top:10px;">TOTAL LÍQUIDO A PAGAR (DESEMBOLSO REAL): ${formatarMoeda(totalLiquido)}</h3>
-                <br><br><br><button onclick="window.print()" style="padding:7px 15px; font-weight:bold; cursor:pointer;">🖨️ Imprimir Relação Natalina</button>
-            </div>
-        </body></html>
-    `);
-    window13.document.close();
-}
-
-function abrirContracheque(dadosString) {
-    const f = JSON.parse(decodeURIComponent(dadosString));
-    const proventosTotais = f.salario + f.total_he_ganho + f.insalubridade + f.reflexo_13_ferias;
-    const janela = window.open('', '_blank', 'width=750,height=850');
-    janela.document.write(`<html><body style='font-family:monospace; padding:25px;'><div style='border:2px solid #000; padding:20px; max-width:650px; margin:0 auto;'><h2>RECIBO DE PAGAMENTO MENSAL</h2><p><strong>TERCEIRO ADM ASSOCIADOS</strong></p><hr><p><strong>Colaborador:</strong> ${f.nome}</p><p><strong>Salário Base:</strong> ${formatarMoeda(f.salario)}</p><p><strong>Total Proventos:</strong> ${formatarMoeda(proventosTotais + f.beneficios)}</p><p><strong>Total Descontos:</strong> ${formatarMoeda(f.total_descontos)}</p><h3>VALOR LÍQUIDO A RECEBER: ${formatarMoeda(f.liquido)}</h3></div><script>window.print();<\/script></body></html>`);
-    janela.document.close();
-}
-
-function abrirFerias(dadosString) {
-    const f = JSON.parse(decodeURIComponent(dadosString));
-    const baseFerias = f.salario + f.insalubridade;
-    const terco = baseFerias / 3;
-    const janela = window.open('', '_blank', 'width=750,height=700');
-    janela.document.write(`<html><body style='font-family:monospace; padding:30px;'><div style='border:2px solid #000; padding:20px; max-width:600px; margin:0 auto;'><h2>RECIBO DE FÉRIAS</h2><p><strong>TERCEIRO ADM ASSOCIADOS</strong></p><hr><p><strong>Colaborador:</strong> ${f.nome}</p><h3>LÍQUIDO DAS FÉRIAS: ${formatarMoeda((baseFerias + terco) * 0.91)}</h3></div><script>window.print();<\/script></body></html>`);
-    janela.document.close();
-}
-
-function imprimirBalanco() { window.print(); }
