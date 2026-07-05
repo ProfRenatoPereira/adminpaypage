@@ -43,7 +43,6 @@ async function adicionarFuncionario() {
     const mesRef = document.getElementById('mes_referencia').value;
 
     if (!nome) { alert('Insira o nome do profissional.'); return; }
-
     await fetch('/api/calcular', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,133 +51,103 @@ async function adicionarFuncionario() {
             planoSaude, planoOdonto, valeFarmacia, sindicato, adiantamento, vt, qtdFilhos, mesRef
         })
     });
-
     document.getElementById('nome').value = '';
     carregarDadosBanco();
 }
 
 async function demitirFuncionario(id) {
-    await fetch(`/api/funcionarios/${id}`, { method: 'DELETE' });
+    await fetch('/api/funcionarios/' + id, { method: 'DELETE' });
     carregarDadosBanco();
 }
 
 function atualizarDashboard() {
     const receita = parseFloat(document.getElementById('receita_empresa').value) || 0;
     let totalBruto = 0, totalDescontos = 0, totalLiquido = 0;
-    
     funcionarios.forEach(f => {
         totalBruto += f.salario + f.total_he_ganho + f.insalubridade + f.reflexo_13_ferias;
         totalDescontos += f.total_descontos;
         totalLiquido += f.liquido;
     });
-
     let custoTotal = funcionarios.reduce((acc, f) => acc + f.salario + f.beneficios + f.total_he_ganho + f.insalubridade + f.reflexo_13_ferias, 0);
     let saldoFinal = receita - custoTotal;
-
-    document.getElementById('dash_total_func').innerText = `${funcionarios.length} / ${document.getElementById('limite_func').value}`;
+    document.getElementById('dash_total_func').innerText = funcionarios.length + ' / ' + document.getElementById('limite_func').value;
     document.getElementById('dash_custo_bruto').innerText = formatarMoeda(totalBruto);
     document.getElementById('dash_total_descontos').innerText = formatarMoeda(totalDescontos);
     document.getElementById('dash_folha_liquida').innerText = formatarMoeda(totalLiquido);
     document.getElementById('dash_saldo_empresa').innerText = formatarMoeda(saldoFinal);
     document.getElementById('card_balanco').className = saldoFinal < 0 ? 'metric negative' : 'metric';
-    
     renderizarGraficosNativos(totalLiquido, totalDescontos);
 }
-
 function renderizarGraficosNativos(liquido, descontos) {
     const total = liquido + descontos;
     const pizza = document.getElementById('nativePizza');
     if (pizza) {
         const perc = total > 0 ? ((descontos / total) * 100).toFixed(1) : 0;
-        pizza.style.background = `conic-gradient(#dc2626 0% ${perc}%, #16a34a ${perc}% 100%)`;
+        pizza.style.background = "conic-gradient(#dc2626 0% " + perc + "%, #16a34a " + perc + "% 100%)";
     }
-
     const custosCargo = {};
     funcionarios.forEach(f => custosCargo[f.cargo] = (custosCargo[f.cargo] || 0) + f.salario);
     const cargos = Object.keys(custosCargo).sort((a,b) => custosCargo[b] - custosCargo[a]);
     const maxCusto = cargos.length > 0 ? custosCargo[cargos] : 1;
-    
     const containerPareto = document.getElementById('nativePareto');
     if (containerPareto) {
         containerPareto.innerHTML = '';
         cargos.slice(0, 4).forEach(c => {
             const pct = (custosCargo[c] / maxCusto) * 100;
-            containerPareto.innerHTML += `<div class="bar-wrapper"><div class="bar-native" style="height: ${pct}%">${pct.toFixed(0)}%</div><div class="bar-label">${c}</div></div>`;
+            containerPareto.innerHTML += '<div class="bar-wrapper"><div class="bar-native" style="height: ' + pct + '%">' + pct.toFixed(0) + '%</div><div class="bar-label">' + c + '</div></div>';
         });
     }
-
     const containerLinear = document.getElementById('nativeLinear');
     if (containerLinear) {
         containerLinear.innerHTML = '';
         const maxLiquido = funcionarios.length > 0 ? Math.max(...funcionarios.map(f => f.liquido)) : 1;
         funcionarios.slice(-4).forEach(f => {
             const pct = (f.liquido / maxLiquido) * 100;
-            containerLinear.innerHTML += `<div class="linear-row"><div class="linear-name">${f.nome}</div><div class="linear-bar-bg"><div class="linear-bar-fill" style="width: ${pct}%"></div></div><div class="linear-value">${formatarMoeda(f.liquido)}</div></div>`;
+            containerLinear.innerHTML += '<div class="linear-row"><div class="linear-name">' + f.nome + '</div><div class="linear-bar-bg"><div class="linear-bar-fill" style="width: ' + pct + '%"></div></div><div class="linear-value">' + formatarMoeda(f.liquido) + '</div></div>';
         });
     }
 }
 
 function renderizarTabela() {
     const corpo = document.getElementById('tabela_corpo');
-    if (!corpo) return;
-    corpo.innerHTML = '';
-    
+    if (!corpo) return; corpo.innerHTML = '';
     funcionarios.forEach(f => {
-        const dados = encodeURIComponent(JSON.stringify(f));
         const tr = document.createElement('tr');
-        
-        tr.innerHTML = `
-            <td><strong>${f.nome}</strong></td>
-            <td>${f.cargo}</td>
-            <td>${formatarMoeda(f.salario)}</td>
-            <td style="color:#16a34a"><strong>${formatarMoeda(f.liquido)}</strong></td>
-            <td class="actions-cell">
-                <button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirContracheque('${dados}')">📄 Mensal</button>
-                <button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirFerias('${dados}')">🌴 Férias</button>
-                <button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'demissao_sem_justa')">⚠️ Sem Justa</button>
-                <button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="prepararRescisaoDirecta('${dados}', 'pedido_demissao')">🏃 Pedido</button>
-                <button class="btn-delete" onclick="demitirFuncionario(${f.id})">Demitir</button>
-            </td>
-        `;
+        tr.innerHTML = '<td><strong>' + f.nome + '</strong></td><td>' + f.cargo + '</td><td>' + formatarMoeda(f.salario) + '</td><td style="color:#16a34a"><strong>' + formatarMoeda(f.liquido) + '</strong></td><td><button class="btn-delete" style="background:#0284c7; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirContracheque(' + f.id + ')">📄 Mensal</button><button class="btn-delete" style="background:#16a34a; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="abrirFerias(' + f.id + ')">🌴 Férias</button><button class="btn-delete" style="background:#b91c1c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(' + f.id + ', \'demissao_sem_justa\')">⚠️ Sem Justa</button><button class="btn-delete" style="background:#ea580c; color:white; border:none; padding:4px 8px; margin-right:3px; border-radius:4px;" onclick="emitirRescisaoExecutiva(' + f.id + ', \'pedido_demissao\')">跑 Pedido</button><button class="btn-delete" onclick="demitirFuncionario(' + f.id + ')">Demitir</button></td>';
         corpo.appendChild(tr);
     });
 }
 
-function prepararRescisaoDirecta(dadosString, tipo) {
-    const objetoFuncionario = JSON.parse(decodeURIComponent(dadosString));
-    emitirRescisaoExecutiva(objetoFuncionario, tipo);
+function abrirContracheque(id) {
+    const f = funcionarios.find(emp => emp.id === id); if(!f) return;
+    const proventosTotais = f.salario + f.total_he_ganho + f.insalubridade + f.reflexo_13_ferias;
+    const janela = window.open('', '_blank', 'width=750,height=850');
+    janela.document.write("<html><body style='font-family:monospace; padding:25px;'><h2>RECIBO MENSAL</h2><hr><p><strong>Colaborador:</strong> " + f.nome + "</p><p><strong>Cargo:</strong> " + f.cargo + "</p><p><strong>Líquido:</strong> " + formatarMoeda(f.liquido) + "</p></body></html>");
+    janela.document.close();
 }
 
-async function emitirRescisaoExecutiva(f, tipo) {
-    const resposta = await fetch('/api/rescisao', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salario: f.salario, admissao: f.data_admissao, tipoRescisao: tipo })
-    });
+function abrirFerias(id) {
+    const f = funcionarios.find(emp => emp.id === id); if(!f) return;
+    const baseFerias = f.salario + f.insalubridade;
+    const janela = window.open('', '_blank', 'width=750,height=700');
+    janela.document.write("<html><body style='font-family:monospace; padding:30px;'><h2>RECIBO DE FÉRIAS</h2><hr><p><strong>Colaborador:</strong> " + f.nome + "</p><p><strong>Líquido:</strong> " + formatarMoeda((baseFerias + (baseFerias/3)) * 0.91) + "</p></body></html>");
+    janela.document.close();
+}
+
+async function emitirRescisaoExecutiva(id, tipo) {
+    const f = funcionarios.find(emp => emp.id === id); if(!f) return;
+    const resposta = await fetch('/api/rescisao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ salario: f.salario, admissao: f.data_admissao, tipoRescisao: tipo }) });
     const r = await resposta.json();
-    
     const janela = window.open('', '_blank', 'width=750,height=850');
-    janela.document.write(`
-        <html><body style="font-family:monospace; padding:30px; color:#000;">
-            <div style="border:2px solid #000; padding:20px; max-width:650px; margin:0 auto;">
-                <h2 style="text-align:center; color:#dc2626;">TERMO DE QUITAÇÃO DE RESCISÃO TRABALHISTA</h2>
-                <p style="text-align:center; font-weight:bold;">TERCEIRO ADM ASSOCIADOS</p>
-                <p style="text-align:center;">Causa: <strong>\${tipo === 'pedido_demissao' ? 'Pedido de Demissão' : 'Dispensa sem Justa Causa'}</strong></p><hr>
-                <h4>VERBAS PROPORCIONAIS</h4>
-                <p>(+) Saldo de Salário: \${formatarMoeda(r.saldoSalario)}</p>
-                \${r.valorAvisoPrevio > 0 ? `<p>(+) Aviso Prévio Recebido: \${formatarMoeda(r.valorAvisoPrevio)}</p>` : ''}
-                <p>(+) 13º Proporcional: \${formatarMoeda(r.decimoTerceiroProp)}</p>
-                <p>(+) Férias + 1/3: \${formatarMoeda(r.feriasProporcionais + r.tercoConstitucional)}</p>
-                <h4>DEDUÇÕES LEGAIS</h4>
-                <p style="color:red">(-) INSS Retido: \${formatarMoeda(r.inss)}</p>
-                \${r.descontoAviso > 0 ? `<p style="color:red">(-) Desconto de Aviso Prévio: \${formatarMoeda(r.descontoAviso)}</p>` : ''}
-                <hr>
-                <h3>SALDO LÍQUIDO DA QUITAÇÃO: \${formatarMoeda(r.liquido)}</h3>
-                <br><br><p style="text-align:center;">___________________________<br>Assinatura</p>
-            </div>
-            <script>window.print();<\/script>
-        </body></html>
-    `);
+    janela.document.write("<html><body style='font-family:monospace; padding:30px;'><h2>TERMO DE RESCISÃO CLT</h2><hr><p><strong>Causa:</strong> " + (tipo === 'pedido_demissao' ? 'Pedido de Demissão' : 'Dispensa sem Justa Causa') + "</p><p><strong>Saldo Líquido:</strong> " + formatarMoeda(r.liquido) + "</p></body></html>");
+    janela.document.close();
+}
+
+function abrirDecimoTerceiroGeral() {
+    if (funcionarios.length === 0) { alert("Nenhum funcionário ativo."); return; }
+    let totalLiquido = 0; funcionarios.forEach(f => { totalLiquido += (f.salario * 0.91); });
+    const janela = window.open('', '_blank', 'width=750,height=700');
+    janela.document.write("<html><body style='font-family:monospace; padding:30px;'><h2>FOLHA DE 13º SALÁRIO INTEGRAL</h2><hr><h3>TOTAL LÍQUIDO A PAGAR: " + formatarMoeda(totalLiquido) + "</h3></body></html>");
     janela.document.close();
 }
 
